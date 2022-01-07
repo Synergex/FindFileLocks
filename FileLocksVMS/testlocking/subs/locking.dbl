@@ -1,0 +1,618 @@
+; This file contains locking routines used to find
+; record locks on an OpenVMS system
+
+.function findLocks, ^VAL
+	    a_fileName, a
+
+.include "$jpidef" library "DBLSTARLET"
+.include "$lkidef" library "DBLSTARLET"
+.include "$lckdef" library "DBLSTARLET"
+.include "$ssdef" library "DBLSTARLET"
+
+external function
+	sys$cmexec		,^val
+	sys$getjpiw		,^val
+	lib$get_ef		,^val
+	lib$free_ef		,^val
+	lib$fid_to_name		,^val
+	cli$present		,^val
+	cli$get_value		,^val
+	format_unprintable	,a
+
+record
+	getlkiw			,i4, ^xtrnl(sys$getlkiw)
+	status			,i4
+	lkef			,i4
+	found_lockid		,i4
+	parent_lockid		,i4
+	wildcard		,i4
+	locking_pid		,i4
+	i			,i4
+	devlog_len		,i4
+	file_org		,i4
+	wildcard_args		,[8]i4
+	parent_args		,[8]i4
+	iosb			,[4]i2
+.align QUAD
+	group scan_itemlist	,[5]i	; 1 more entry than needed for all the info
+	    group terminator	,i4
+		buflen		,i2
+		code		,i2
+	    endgroup
+	    bufadr		,i4
+	    retlenadr		,i4
+	endgroup
+	group parent_itemlist	,[3]i	; 1 more entry than needed for all the info
+	    group terminator	,i4
+		buflen		,i2
+		code		,i2
+	    endgroup
+	    bufadr		,i4
+	    retlenadr		,i4
+	endgroup
+	group getjpi_itemlist	,[7]i	; 1 more entry than needed for all the info
+	    group terminator	,i4
+		buflen		,i2
+		code		,i2
+	    endgroup
+	    bufadr		,i4
+	    retlenadr		,i4
+	endgroup
+.align QUAD
+	group rfa		,a6
+	    vbn			,i4
+	    id			,i2
+	endgroup
+.align QUAD
+	group found_resnam
+	    id			,i4
+	    vbn			,i4
+	    fill		,[6]i1
+	    			,a27
+	    rms$		,a4 @found_resnam
+	endgroup
+.align QUAD
+	group parent_resnam
+	    rms$		,a4
+	    fid1		,i2
+	    fid2		,i2
+	    fid3		,i2
+	    			,i1
+	    devlog		,a20
+	endgroup
+	group lock_state
+	    state_requested	,i1
+	    state_granted	,i1
+	    state_queue		,i1
+	endgroup
+	group issts_data
+	    maxreclen		,d5
+	    key0start		,d5
+	    key0len		,d3
+	    filecapacity	,d8
+	    unused_recs		,d8
+	    num_keys		,d2
+	endgroup
+
+record imisc
+	    filespec_len, i2
+	    username_len, i2
+	    image_name_len, i2
+	    process_name_len, i2
+	    terminal_name_len, i2
+	    phydevnam_len, i2
+	    node_name_len, i2
+	    response, i4
+	    i4FileChannel, i4
+	    ffid, [3]i2
+	    fid, [3]i2
+
+record amisc
+	    filespec, a200
+	    ffilename, a255
+	    filename, a255
+	    foundfile, a255
+	    username, a65
+	    image_name, a65
+	    process_name, a65
+	    terminal_name, a65
+	    phydevnam, a65
+	    node_name, a65
+	    device, a65
+
+record
+	data_area, a32767
+
+record dbparseStuff
+	    p_result		,a255
+	    p_spec		,a255
+	    p_default		,a255
+	    p_associated	,a255
+	    p_flags		,i4
+	    p_node		,a255
+	    p_dev		,a255
+	    p_dir		,a255
+	    p_name		,a255
+	    p_type		,a255
+	    p_ver		,a255
+	    p_fid		,[3]i4
+
+.proc
+	    i4FileChannel = %syn_freechn
+
+	    if a_filename != "*"
+	      begin
+		onerror badfile
+		ffilename = a_filename
+		p_spec = ffilename
+		p_default = ffilename
+		p_associated = ffilename
+		p_flags = 16
+		status = %dblparse( p_result,
+		&		    p_spec,		
+		&		    p_default,		
+		&		    p_associated,	
+		&		    p_flags,		
+		&		    p_node,		
+		&		    p_dev,		
+		&		    p_dir,		
+		&		    p_name,		
+		&		    p_type,		
+		&		    p_ver,		
+		&		    p_fid)		
+		ffilename = %atrim(p_dev) + %atrim(p_dir) + %atrim(p_name) + %atrim(p_type) + %atrim(p_ver)
+		offerror
+	      end
+	    
+	    call fillLists
+	    
+	    repeat
+	      begin
+		status = %sys$cmexec(^val(getlkiw), ^ref(wildcard_args))
+		if (status .eq. SS$_NOMORELOCK)
+		  begin
+		    exitloop
+		  end
+		if (status .band. 1)
+		  begin
+		    status = iosb[1]
+		  end
+		if (.not. (status .band. 1))
+		  begin
+		    xcall lib$stop(^val(status))
+		  end
+		parent_args[1] = 7
+		parent_args[2] = wildcard_args[2]
+		parent_args[3] = ^addr(parent_lockid)
+		parent_args[4] = ^addr(parent_itemlist)
+		parent_args[5] = ^addr(iosb)
+		clear parent_args[6]
+		clear parent_args[7]
+		clear parent_args[8]
+
+		status = %sys$cmexec(^val(getlkiw), ^ref(parent_args))
+		if (status .band. 1)
+		  begin
+		    status = iosb[1]
+		  end
+		if (.not. (status .band. 1))
+		  begin
+		    nextloop
+		  end
+
+		if ((parent_lockid) .and. (parent_resnam.rms$ .eqs. "RMS$") .and. (lock_state.state_granted > 1))
+		  begin
+		    devlog_len = ^size(devlog)
+		    while (^i(devlog(devlog_len:1)) .lt. 33)
+		      begin
+			decr devlog_len
+		      end
+		    status = %lib$fid_to_name("DISK$" + devlog(1:devlog_len), ^ref(fid1), filespec, ^ref(filespec_len))
+		    p_spec = filespec
+		    p_default = filespec
+		    p_associated = filespec
+		    p_flags = 16
+		    status = %dblparse( p_result,
+		    &		    p_spec,		
+		    &		    p_default,		
+		    &		    p_associated,	
+		    &		    p_flags,		
+		    &		    p_node,		
+		    &		    p_dev,		
+		    &		    p_dir,		
+		    &		    p_name,		
+		    &		    p_type,		
+		    &		    p_ver,		
+		    &		    p_fid)
+		    filespec = p_result
+		    filename = %atrim(p_dev) + %atrim(p_dir) + %atrim(p_name) + %atrim(p_type) + %atrim(p_ver)
+		    if (.not. (status .band. 1))
+		      begin
+			xcall lib$stop(^val(status))
+		      end
+		    
+		    call get_proc_data
+		  end
+	      end
+	    
+	    freturn response
+
+	    ; ==============================================================================
+	    ; Internal subroutines
+	    ; ==============================================================================
+	    
+badFile,
+	    offerror
+	    clear response
+	    response = %toString("Error " + %string(%error) + " getting lock info for " + a_fileName)
+	    freturn response
+	    
+fillLists,
+	    onerror badFile
+	    
+	    clear ^i(scan_itemlist)
+	    scan_itemlist[1].buflen = ^size(found_resnam)
+	    scan_itemlist[1].code = LKI$_RESNAM
+	    scan_itemlist[1].bufadr = ^addr(found_resnam)
+	    scan_itemlist[2].buflen = ^size(found_lockid)
+	    scan_itemlist[2].code = LKI$_LOCKID
+	    scan_itemlist[2].bufadr = ^addr(found_lockid)
+	    scan_itemlist[3].buflen = ^size(parent_lockid)
+	    scan_itemlist[3].code = LKI$_PARENT
+	    scan_itemlist[3].bufadr = ^addr(parent_lockid)
+	    scan_itemlist[4].buflen = ^size(lock_state)
+	    scan_itemlist[4].code = LKI$_STATE
+	    scan_itemlist[4].bufadr = ^addr(lock_state)
+
+	    wildcard =-1
+	    wildcard_args[1] = 7
+	    status = %lib$get_ef(^ref(wildcard_args[2]))
+	    if (.not. (status .band. 1))
+		xcall lib$stop(^val(status))
+	    wildcard_args[3] = ^addr(wildcard)
+	    wildcard_args[4] = ^addr(scan_itemlist)
+	    wildcard_args[5] = ^addr(iosb)
+	    clear wildcard_args[6]
+	    clear wildcard_args[7]
+	    clear wildcard_args[8]
+
+	    clear ^i(parent_itemlist)
+	    parent_itemlist[1].buflen = ^size(parent_resnam)
+	    parent_itemlist[1].code = LKI$_RESNAM
+	    parent_itemlist[1].bufadr = ^addr(parent_resnam)
+	    parent_itemlist[2].buflen = ^size(locking_pid)
+	    parent_itemlist[2].code = LKI$_PID
+	    parent_itemlist[2].bufadr = ^addr(locking_pid)
+
+	    parent_args[1] = 7
+	    parent_args[2] = wildcard_args[2]
+	    parent_args[3] = ^addr(parent_lockid)
+	    parent_args[4] = ^addr(parent_itemlist)
+	    parent_args[5] = ^addr(iosb)
+	    clear parent_args[6]
+	    clear parent_args[7]
+	    clear parent_args[8]
+
+	    clear ^i(getjpi_itemlist)
+	    getjpi_itemlist[1].buflen = ^size(username)
+	    getjpi_itemlist[1].code = JPI$_USERNAME
+	    getjpi_itemlist[1].bufadr = ^addr(username)
+	    getjpi_itemlist[1].retlenadr = ^addr(username_len)
+	    getjpi_itemlist[2].buflen = ^size(image_name)
+	    getjpi_itemlist[2].code = JPI$_IMAGNAME
+	    getjpi_itemlist[2].bufadr = ^addr(image_name)
+	    getjpi_itemlist[2].retlenadr = ^addr(image_name_len)
+	    getjpi_itemlist[3].buflen = ^size(process_name)
+	    getjpi_itemlist[3].code = JPI$_PRCNAM
+	    getjpi_itemlist[3].bufadr = ^addr(process_name)
+	    getjpi_itemlist[3].retlenadr = ^addr(process_name_len)
+	    getjpi_itemlist[4].buflen = ^size(terminal_name)
+	    getjpi_itemlist[4].code = JPI$_TERMINAL
+	    getjpi_itemlist[4].bufadr = ^addr(terminal_name)
+	    getjpi_itemlist[4].retlenadr = ^addr(terminal_name_len)
+	    getjpi_itemlist[5].buflen = ^size(phydevnam)
+	    getjpi_itemlist[5].code = JPI$_TT_PHYDEVNAM
+	    getjpi_itemlist[5].bufadr = ^addr(phydevnam)
+	    getjpi_itemlist[5].retlenadr = ^addr(phydevnam_len)
+	    getjpi_itemlist[6].buflen = ^size(node_name)
+	    getjpi_itemlist[6].code = JPI$_NODENAME
+	    getjpi_itemlist[6].bufadr = ^addr(node_name)
+	    getjpi_itemlist[6].retlenadr = ^addr(node_name_len)
+	    
+	    offerror
+	    
+	    return
+	    
+get_proc_data,
+	    
+	    onerror badFile
+
+	    status = %sys$getjpiw(^val(0), ^ref(locking_pid), ^val(0),
+&		    ^ref(getjpi_itemlist), ^ref(iosb), ^val(0), ^val(0))
+;	    if (status .eq. SS$_SUSPENDED)
+;		goto get_proc_data
+	    if (status .band. 1)
+		status = iosb[1]
+	    if (.not. (status .band. 1))
+		xcall lib$stop(^val(status))
+	    if (.not. image_name_len)
+		begin
+		image_name = "(DCL)"
+		image_name_len = 5
+		end
+
+	    rfa.vbn = found_resnam.vbn
+	    rfa.id = found_resnam.id
+
+	    if rfa.vbn > 0 
+	      begin
+		onerror cantparse
+		open(i4FileChannel, i, %atrim(filespec), share:Q_NO_EXCL, lock:Q_NO_LOCK)
+		xcall filnm(i4FileChannel,foundfile)
+		;xcall parse(foundfile,,node,device,directory,name,extension,version,expanded_spec)
+cantparse,
+		offerror
+		if i4FileChannel > 0 && i4FileChannel < 256 && %chopen(i4FileChannel) close i4FileChannel
+		if %atrim(filename) == %atrim(ffilename) || a_filename == "*"
+		  begin
+		    if response
+		      then
+		      begin
+			response = %addString(response,"Process " + %hex(locking_pid) + ", """ + process_name(1:process_name_len) +
+			&      """, User: " + %atrim(username(1:username_len)) + " on node: " + node_name(1:node_name_len) + %char(13) + %char(10))
+		      end
+		      else
+		      begin
+			response = %toString("Process " + %hex(locking_pid) + ", """ + process_name(1:process_name_len) +
+			&      """, User: " + %atrim(username(1:username_len)) + " on node: " + node_name(1:node_name_len) + %char(13) + %char(10))
+		      end
+		    if phydevnam_len
+		      then
+		      begin
+			response = %addString(response,"running " + image_name(1:image_name_len) + " at " + phydevnam(1:phydevnam_len) + %char(13) + %char(10))
+		      end
+		      else
+		      begin
+			response = %addString(response,"running " + image_name(1:image_name_len) + " at " + 'NL' + %char(13) + %char(10))
+		      end
+		    response = %addString(response,"Has a lock on " + %atrim(filespec) + %char(13) + %char(10))
+		    response = %addString(response,"VBN = " + %string(rfa.vbn) + ", ID = " + %string(rfa.id) + ", MODE = " + %string(lock_state.state_granted) + %char(13) + %char(10))
+		    open(i4FileChannel, i, %atrim(filespec), share:Q_NO_EXCL, lock:Q_NO_LOCK)
+		    read(i4FileChannel, data_area, rfa:rfa) [ERR=not_there]
+		    response = %addString(response,%format_unprintable(data_area(1:50)) + %char(13) + %char(10))
+		    xcall getfa(i4FileChannel, "ORG", file_org)
+		    if (file_org .eq. 32)
+			begin
+			xcall issts(i4FileChannel, issts_data)
+			for i from 1 thru num_keys
+			  begin
+			    response = %addString(response,"Key " + %string(i - 1, "ZX") + ": """ + %format_unprintable(%keyval(2, data_area, i - 1)) + """" + %char(13) + %char(10))
+			  end
+			end
+not_there,		close i4FileChannel
+		    response = %addString(response,' ' + %char(13) + %char(10))
+		  end
+	      end
+	    
+	    offerror
+	    
+	    return
+	
+.end
+
+.function toString, ^VAL
+	    text, a
+
+record misc
+	    handle, i4
+
+structure tmpStruct
+	    field, a1
+	    
+.proc
+	    handle = %mem_proc(DM_ALLOC|DM_STATIC|DM_BLANK, ^size(text))
+	    ^m(tmpStruct(1:^size(text)), handle) = text
+	    freturn handle
+.end
+
+.function addString, ^VAL
+	    handle, i
+	    text, a
+
+record imisc
+	    currentSize, i4
+	    newSize, i4
+
+structure tmpStruct
+	    field, a1
+
+.proc
+	    currentSize = %mem_proc(DM_GETSIZE, handle)
+	    newSize = currentSize + ^size(text)
+	    handle = %mem_proc(DM_RESIZ|DM_BLANK, newSize, handle)
+	    ^m(tmpStruct(currentSize + 1, newSize), handle) = text
+	    freturn handle
+.end
+
+
+;
+;	Simple function to substitute unprintable characters
+;	in a string for dots. Returns a maximum length of
+;	79 bytes. This is for displaying random data, so it's
+;	onnly ever going to be a "sample" of what's there.
+;
+;
+.function format_unprintable
+instring	,a
+
+record
+	len		,i4
+	i		,i4
+	outstring	,a79
+	outbyte		,[79]i1 @outstring
+
+.proc
+
+	len = ^size(instring)
+	if (len .gt. 79)
+	    len = 79
+	outstring = instring
+	for i from 1 thru len
+	    if (outbyte[i] .lt. 32)
+		outbyte[i] = 46
+	freturn outstring(1:len)
+.end
+
+;	This function performs full VMS style parsing of a filename
+;	with default and associated files pecifications.
+;
+;	usage:
+;
+;	status = %dblparse(result, [spec], [default], [associated], [flags],
+;&		[node], [device], [directory], [name], [type], [version])
+;
+;	where
+;
+;	result is the buffer into which the resul is writte.
+;
+;	spec, default , and associated are where the parse draws the
+;	file elements from.
+;
+;	flags is the flags to afect the parse, these may be
+;
+;	NAM$M_SYNCHK		,8
+;	NAM$M_NOCONCEAL		,16
+;
+.function dblparse	,^val
+p_result	,a
+p_spec		,a
+p_default	,a
+p_associated	,a
+p_flags		,n
+p_node		,a
+p_dev		,a
+p_dir		,a
+p_name		,a
+p_type		,a
+p_ver		,a
+p_fid		,[3]i
+
+.include "fabdef" library "DBLSTARLET"
+.include "namdef" library "DBLSTARLET"
+
+external function
+	sys$parse	,^val
+
+record
+	rnam		,a^size(namdef)
+	i		,i4
+	status		,i4
+	numargs		,i4
+	cc_rms_fab	,i4, ^xtrnl(cc$rms_fab)
+	cc_rms_nam	,i4, ^xtrnl(cc$rms_nam)
+	space		,a1, " "
+
+.proc
+
+	if (%passed(p_associated))
+	begin
+	    xcall lib$movc3(^ref(^size(namdef)), ^val(cc_rms_nam), ^ref(namdef))
+	    namdef.nam$l_rsa_ptr = ^addr(p_associated)
+	    namdef.nam$b_rsl = ^size(p_associated)
+	    rnam = namdef
+	end
+;	If an associated filespec is passed, set up an associated NAM block
+;	and point it to the associated spec
+
+	xcall lib$movc3(^ref(^size(namdef)), ^val(cc_rms_nam), ^ref(namdef))
+;	Initialize the nam block
+
+	xcall lib$movc3(^ref(^size(fabdef)), ^val(cc_rms_fab), ^ref(fabdef))
+	fabdef.fab$l_nam_ptr = ^addr(namdef)
+
+	if (%passed(p_spec))
+	    begin
+	    fabdef.fab$l_fna_ptr = ^addr(p_spec)
+	    fabdef.fab$b_fns = %trim(p_spec)
+	    end
+;	Point to the filespec
+
+	if (%passed(p_default))
+	    begin
+	    fabdef.fab$l_dna_ptr = ^addr(p_default)
+	    fabdef.fab$b_dns = %trim(p_default)
+	    end
+;	Point to the default filespec
+
+	if (%passed(p_flags))
+	    namdef.nam$b_nop = p_flags
+;	Flags
+
+	namdef.nam$l_esa_ptr = ^addr(p_result)
+	namdef.nam$b_ess = ^size(p_result)
+;	Point to result area
+
+	status = %sys$parse(^ref(fabdef))
+	if (%passed(p_result))
+	    clear p_result(namdef.nam$b_esl + 1, ^size(p_result))
+
+	if (%passed(p_node))
+	    begin
+	    i = namdef.nam$b_node
+	    xcall lib$movc5(^ref(i), ^val(namdef.nam$l_node_ptr), ^ref(space),
+&		^ref(^size(p_node)), ^ref(p_node))
+	    end
+;	Return node
+
+	if (%passed(p_dev))
+	    begin
+	      p_dev = %atrim(nam$t_dvi)
+;	    i = namdef.nam$b_dev
+;	    xcall lib$movc5(^ref(i), ^val(namdef.nam$l_dev_ptr), ^ref(space),
+;&		^ref(^size(p_dev)), ^ref(p_dev))
+	    end
+;	Return dev
+
+	if (%passed(p_dir))
+	    begin
+	    i = namdef.nam$b_dir
+	    xcall lib$movc5(^ref(i), ^val(namdef.nam$l_dir_ptr), ^ref(space),
+&		^ref(^size(p_dir)), ^ref(p_dir))
+	    end
+;	Return dir
+
+	if (%passed(p_name))
+	    begin
+	    i = namdef.nam$b_name
+	    xcall lib$movc5(^ref(i), ^val(namdef.nam$l_name_ptr), ^ref(space),
+&		^ref(^size(p_name)), ^ref(p_name))
+	    end
+;	Return name
+
+	if (%passed(p_type))
+	    begin
+	    i = namdef.nam$b_type
+	    xcall lib$movc5(^ref(i), ^val(namdef.nam$l_type_ptr), ^ref(space),
+&		^ref(^size(p_type)), ^ref(p_type))
+	    end
+;	Return type								*/
+
+	if (%passed(p_ver))
+	    begin
+	    i = namdef.nam$b_ver
+	    xcall lib$movc5(^ref(i), ^val(namdef.nam$l_ver_ptr), ^ref(space),
+&		^ref(^size(p_ver)), ^ref(p_ver))
+	    end
+	  
+	if (%passed(p_fid))
+	  begin
+	    i = 2
+	    xcall lib$movc3(^ref(i), ^ref(namdef.nam$w_fid[1]), ^ref(p_fid[1]))
+	    xcall lib$movc3(^ref(i), ^ref(namdef.nam$w_fid[2]), ^ref(p_fid[2]))
+	    xcall lib$movc3(^ref(i), ^ref(namdef.nam$w_fid[3]), ^ref(p_fid[3]))
+	  end
+;	Return ver								*/
+
+	freturn status
+
+.end

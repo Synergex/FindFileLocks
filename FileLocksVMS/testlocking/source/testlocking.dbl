@@ -1,0 +1,35 @@
+.main lockingtest
+
+external function
+	    findlocks, ^VAL
+
+record imisc
+	    tt, i4
+	    dataFile1, i4
+	    dataFile2, i4
+
+record amisc
+	    dataarea, a32768
+	    filename, a255
+	    
+.proc
+	    open(tt=syn_freechn, o:c, 'tt:')
+	    display(tt, $scr_pos(1,1), $scr_clr(screen), "Enter an indexed filename: ")
+	    reads(tt, filename)
+	    display(tt, $scr_pos(3,1))
+	    open(dataFile1=syn_freechn, u:i, filename)
+	    open(dataFile2=syn_freechn, u:i, filename)
+	    
+	    onerror errorLocked
+	    reads(dataFile1, dataArea)
+	    reads(dataFile2, dataArea)
+	    offerror
+	    
+	    stop
+	    
+errorLocked,
+	    offerror
+	    xcall filnm(datafile2, filename)
+	    display(tt, ^m(%findlocks(%atrim(filename))))
+	    stop
+.end

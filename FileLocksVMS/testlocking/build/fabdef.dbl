@@ -1,0 +1,152 @@
+;******************************************************************************************************************************;
+; Created:  4-MAY-1995 19:00:49 by OpenVMS SDL EV1-36     ;
+; Source:   4-MAY-1995 18:59:02 $64$DUA3210:[STARLET_H.SRC]RMSUSR.SDI1 ;
+;******************************************************************************************************************************;
+;** MODULE $FABDEF **;
+.ifndef FABDEF_LOADED
+.define FABDEF_LOADED %x("0")
+
+;                                                                          ;
+;                                                                          ;
+;	file access block (fab) definitions                                 ;
+;                                                                          ;
+;   the fields thru ctx must not be modified due to                        ;
+;   commonality between fab/rab/xab                                        ;
+;                                                                          ;
+.define FAB$C_BID 3                     ; code for fab                     ;
+.define FAB$M_PPF_RAT %x("3FC0")
+.define FAB$M_PPF_IND %x("4000")
+.define FAB$M_PPIFI %x("8000")
+.define FAB$M_ASY %x("1")
+.define FAB$M_MXV %x("2")
+.define FAB$M_SUP %x("4")
+.define FAB$M_TMP %x("8")
+.define FAB$M_TMD %x("10")
+.define FAB$M_DFW %x("20")
+.define FAB$M_SQO %x("40")
+.define FAB$M_RWO %x("80")
+.define FAB$M_POS %x("100")
+.define FAB$M_WCK %x("200")
+.define FAB$M_NEF %x("400")
+.define FAB$M_RWC %x("800")
+.define FAB$M_DMO %x("1000")
+.define FAB$M_SPL %x("2000")
+.define FAB$M_SCF %x("4000")
+.define FAB$M_DLT %x("8000")
+.define FAB$M_NFS %x("10000")
+.define FAB$M_UFO %x("20000")
+.define FAB$M_PPF %x("40000")
+.define FAB$M_INP %x("80000")
+.define FAB$M_CTG %x("100000")
+.define FAB$M_CBT %x("200000")
+.define FAB$M_SYNCSTS %x("400000")
+.define FAB$M_RCK %x("800000")
+.define FAB$M_NAM %x("1000000")
+.define FAB$M_CIF %x("2000000")
+.define FAB$M_ESC %x("8000000")
+.define FAB$M_TEF %x("10000000")
+.define FAB$M_OFP %x("20000000")
+.define FAB$M_KFO %x("40000000")
+.define FAB$M_PUT %x("1")
+.define FAB$M_GET %x("2")
+.define FAB$M_DEL %x("4")
+.define FAB$M_UPD %x("8")
+.define FAB$M_TRN %x("10")
+.define FAB$M_BIO %x("20")
+.define FAB$M_BRO %x("40")
+.define FAB$M_EXE %x("80")
+.define FAB$M_SHRPUT %x("1")
+.define FAB$M_SHRGET %x("2")
+.define FAB$M_SHRDEL %x("4")
+.define FAB$M_SHRUPD %x("8")
+.define FAB$M_MSE %x("10")
+.define FAB$M_NIL %x("20")
+.define FAB$M_UPI %x("40")
+.define FAB$M_ORG %x("F0")
+.define FAB$C_SEQ 0                     ; sequential                       ;
+.define FAB$C_REL 16                    ; relative                         ;
+.define FAB$C_IDX 32                    ; indexed                          ;
+.define FAB$C_HSH 48                    ; hashed                           ;
+.define FAB$M_FTN %x("1")
+.define FAB$M_CR %x("2")
+.define FAB$M_PRN %x("4")
+.define FAB$M_BLK %x("8")
+.define FAB$M_MSB %x("10")
+.define FAB$C_RFM_DFLT 2                ; var len is default               ;
+.define FAB$C_UDF 0                     ; undefined (also stream binary)   ;
+.define FAB$C_FIX 1                     ; fixed length records             ;
+.define FAB$C_VAR 2                     ; variable length records          ;
+.define FAB$C_VFC 3                     ; variable fixed control           ;
+.define FAB$C_STM 4                     ; RMS-11 stream (valid only for sequential org) ;
+.define FAB$C_STMLF 5                   ; LF stream (valid only for sequential org) ;
+.define FAB$C_STMCR 6                   ; CR stream (valid only for sequential org) ;
+.define FAB$C_MAXRFM 6                  ; maximum rfm supported            ;
+.define FAB$M_ONLY_RU %x("1")
+.define FAB$M_RU %x("2")
+.define FAB$M_BI %x("4")
+.define FAB$M_AI %x("8")
+.define FAB$M_AT %x("10")
+.define FAB$M_NEVER_RU %x("20")
+.define FAB$M_JOURNAL_FILE %x("40")
+.define FAB$M_RCF_RU %x("1")
+.define FAB$M_RCF_AI %x("2")
+.define FAB$M_RCF_BI %x("4")
+.define FAB$K_BLN 80                    ; length of fab                    ;
+.define FAB$C_BLN 80                    ; length of fab                    ;
+record fabdef
+    fab$b_bid				,i1	; block id                         ;
+    fab$b_bln				,i1	; block len                        ;
+    fab$w_ifi				,i2	; internal file index              ;
+    fab$l_fop				,i4	; file options                     ;
+    fab$l_sts				,i4	; status                           ;
+    fab$l_stv				,i4	; status value                     ;
+    fab$l_alq				,i4	; allocation quantity              ;
+    fab$w_deq				,i2	; default allocation quantity      ;
+    fab$b_fac				,i1	; file access                      ;
+    fab$b_shr				,i1	; file sharing                     ;
+    fab$l_ctx				,i4	; user context                     ;
+    fab$b_rtv				,i1	; retrieval window size            ;
+    fab$b_org				,i1	; file organization                ;
+    fab$b_rat				,i1	; record format                    ;
+    fab$b_rfm				,i1	; record format                    ;
+    fab$l_jnl				,i4
+    group fab$r_jnl_real_stuff, X
+	fab$b_journal			,i1	; journaling options (from FH2$B_JOURNAL) ;
+	fab$b_ru_facility		,i1	; recoverable facility id number ;
+	fabdef$$_fill_7			,i2	; (spare)                          ;
+    endgroup
+    fab$l_xab_ptr			,d_addr	; xab address                      ;
+    fab$l_nam_ptr			,d_addr
+    fab$l_fna_ptr			,d_addr	; file name string address         ;
+    fab$l_dna_ptr			,d_addr	; default file name string addr    ;
+    fab$b_fns				,i1	; file name string size            ;
+    fab$b_dns				,i1	; default name string size         ;
+    fab$w_mrs				,i2	; maximum record size              ;
+    fab$l_mrn				,i4	; maximum record number            ;
+    fab$w_bls				,i2	; blocksize for tape               ;
+    fab$b_bks				,i1	; bucket size                      ;
+    fab$b_fsz				,i1	; fixed header size                ;
+    fab$l_dev				,i4	; device characteristics           ;
+    fab$l_sdc				,i4	; spooling device characteristics  ;
+    fab$w_gbc				,i2	; Global buffer count              ;
+    fab$b_acmodes			,i1	; agent access modes               ;
+                          ; recovery control flags           ;
+    fab$b_rcf				,i1	; (only for use by RMS Recovery)   ;
+    fabdef$$_fill_9			,i4	; (spare)                          ;
+
+ 
+ 
+; These are traditional macros that should be hand-maintained for compatibility ;
+.define FAB$S_PPF_RAT	8
+.define FAB$S_ORG	4
+.define fab$b_dsbmsk	fab$b_acmodes	; saved for backwards compatibility ;
+.define FAB$S_LNM_MODE	2		; logical names ;
+.define FAB$S_CHAN_MODE	2		; channel ;
+.define FAB$S_FILE_MODE	2		; files accessability ;
+; The following defines were scrambled before VAX C V3.1 ;
+.define FAB fabdef
+.define fab$l_jnl_real_stuff fab$r_jnl_real_stuff
+record
+	cc$rms_fab	,d_addr, ^xtrnl(decc$ga_rms_fab)
+ 
+.endc ; FABDEF_LOADED ;

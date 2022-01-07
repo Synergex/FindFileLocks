@@ -1,0 +1,141 @@
+;******************************************************************************************************************************;
+; Created:  4-MAY-1995 19:00:49 by OpenVMS SDL EV1-36     ;
+; Source:   4-MAY-1995 18:59:02 $64$DUA3210:[STARLET_H.SRC]RMSUSR.SDI1 ;
+;******************************************************************************************************************************;
+;** MODULE $NAMDEF **;
+.ifndef NAMDEF_LOADED
+.define NAMDEF_LOADED %x("0")
+
+;                                                                          ;
+;         name block field definitions                                     ;
+;                                                                          ;
+;  the nam block is used to communicate optional                           ;
+;  filename-related information                                            ;
+;                                                                          ;
+.define NAM$C_BID 2                     ; code for nam block               ;
+.define NAM$C_MAXRSS 255                ; maximum resultant name string size (network) ;
+.define NAM$C_MAXRSSLCL 255             ; maximum resultant name string size (local) ;
+.define NAM$M_PWD %x("1")
+.define NAM$M_FILL_1 %x("2")
+.define NAM$M_FILL_2 %x("4")
+.define NAM$M_SYNCHK %x("8")
+.define NAM$M_NOCONCEAL %x("10")
+.define NAM$M_SLPARSE %x("20")
+.define NAM$M_SRCHXABS %x("40")
+.define NAM$C_UFS 0                     ; Unknown file system for remote file access or ;
+;  not applicable for local file access or                                 ;
+.define NAM$C_NO_RFS 0                  ;  task-to-task operation          ;
+.define NAM$C_RMS11 1                   ; RMS-11                           ;
+.define NAM$C_RMS20 2                   ; RMS-20                           ;
+.define NAM$C_RMS32 3                   ; RMS-32                           ;
+.define NAM$C_FCS11 4                   ; FCS-11                           ;
+.define NAM$C_RT11FS 5                  ; RT-11 file system                ;
+.define NAM$C_TOPS20FS 7                ; TOPS-20 file system              ;
+.define NAM$C_TOPS10FS 8                ; TOPS-10 file system              ;
+.define NAM$C_RMS32S 10                 ; RMS-32 subset (e.g., VAXELAN)    ;
+.define NAM$C_CPMFS 11                  ; CP/M file system                 ;
+.define NAM$C_MS_DOSFS 12               ; MS/DOS file system               ;
+.define NAM$C_ULTRIX32_FS 13            ; Ultrix-32 file system            ;
+.define NAM$C_ULTRIX11_FS 14            ; Ultrix-11 file system            ;
+.define DAP$K_SNADTF_FS 15              ; SNADTF compatable FS             ;
+;+++++++++++++++++++++++                                                   ;
+.define NAM$C_DVI 16                    ; length of dvi field              ;
+;+++++*****                                                                ;
+.define NAM$M_IFI %x("10000")
+.define NAM$M_SRCHNMF %x("40000000")
+.define NAM$M_SVCTX %x("80000000")
+.define NAM$K_BLN_V2 56                 ; Version 2 name block length      ;
+.define NAM$C_BLN_V2 56                 ; Version 2 name block length      ;
+.define NAM$M_EXP_VER %x("1")
+.define NAM$M_EXP_TYPE %x("2")
+.define NAM$M_EXP_NAME %x("4")
+.define NAM$M_WILD_VER %x("8")
+.define NAM$M_WILD_TYPE %x("10")
+.define NAM$M_WILD_NAME %x("20")
+.define NAM$M_EXP_DIR %x("40")
+.define NAM$M_EXP_DEV %x("80")
+.define NAM$M_WILDCARD %x("100")
+.define NAM$M_SEARCH_LIST %x("800")
+.define NAM$M_CNCL_DEV %x("1000")
+.define NAM$M_ROOT_DIR %x("2000")
+.define NAM$M_LOWVER %x("4000")
+.define NAM$M_HIGHVER %x("8000")
+.define NAM$M_PPF %x("10000")
+.define NAM$M_NODE %x("20000")
+.define NAM$M_QUOTED %x("40000")
+.define NAM$M_GRP_MBR %x("80000")
+.define NAM$M_WILD_DIR %x("100000")
+.define NAM$M_DIR_LVLS %x("E00000")
+.define NAM$M_WILD_UFD %x("1000000")
+.define NAM$M_WILD_SFD1 %x("2000000")
+.define NAM$M_WILD_SFD2 %x("4000000")
+.define NAM$M_WILD_SFD3 %x("8000000")
+.define NAM$M_WILD_SFD4 %x("10000000")
+.define NAM$M_WILD_SFD5 %x("20000000")
+.define NAM$M_WILD_SFD6 %x("40000000")
+.define NAM$M_WILD_SFD7 %x("80000000")
+.define NAM$M_WILD_GRP %x("1000000")
+.define NAM$M_WILD_MBR %x("2000000")
+.define NAM$K_BLN_DIRWC 96              ; Not documented optional length   ;
+.define NAM$C_BLN_DIRWC 96              ; Not documented optional length   ;
+.define NAM$K_BLN 96                    ; Name block length                ;
+.define NAM$C_BLN 96                    ; Name block length                ;
+record namdef
+    nam$b_bid				,i1	; block id                         ;
+    nam$b_bln				,i1	; block length                     ;
+    nam$b_rss				,i1	; resultant string area size       ;
+    nam$b_rsl				,i1	; resultant string length          ;
+    nam$l_rsa_ptr			,d_addr	; resultant string area address    ;
+    nam$b_nop				,i1	; Name options                     ;
+    nam$b_rfs				,i1	; Remote file system type (currently not documented) ;
+    nam$b_ess				,i1	; espanded string area size        ;
+    nam$b_esl				,i1	; expanded string length           ;
+    nam$l_esa_ptr			,d_addr	; expanded string area address     ;
+    nam$l_rlf_ptr			,d_addr
+    nam$t_dvi				,a16	; device id                        ;
+    nam$w_fid				,[3]i2	; file id                        ;
+    group nam$r_fid_fields, X
+	nam$w_fid_num			,i2	; file number                ;
+	nam$w_fid_seq			,i2	; sequence number            ;
+	nam$w_fid_rvn			,i2	; relative volume number ;
+	group nam$r_fid_rvn_fields, X
+	    nam$b_fid_rvn		,i1	; alternate format RVN    ;
+	    nam$b_fid_nmx		,i1	; alternate format file number extension ;
+	endgroup
+    endgroup
+    nam$w_did				,[3]i2	; directory id                   ;
+    group nam$r_did_fields, X
+	nam$w_did_num			,i2	; file number                ;
+	nam$w_did_seq			,i2	; sequence number            ;
+	nam$w_did_rvn			,i2	; relative volume number ;
+	group nam$r_did_rvn_fields, X
+	    nam$b_did_rvn		,i1	; alternate format RVN    ;
+	    nam$b_did_nmx		,i1	; alternate format file number extension ;
+	endgroup
+    endgroup
+    nam$l_wcc				,i4	; wild card context                ;
+    nam$l_fnb				,i4	; file name status bits            ;
+    nam$b_node				,i1	; Nodespec length                  ;
+    nam$b_dev				,i1	; Device length                    ;
+    nam$b_dir				,i1	; Directory length                 ;
+    nam$b_name				,i1	; Filename length                  ;
+    nam$b_type				,i1	; Filetype length                  ;
+    nam$b_ver				,i1	; Version number length            ;
+    namdef$$_fill_6			,a2	; Currently unused                 ;
+    nam$l_node_ptr			,d_addr	; Nodespec address                 ;
+    nam$l_dev_ptr			,d_addr	; Device address                   ;
+    nam$l_dir_ptr			,d_addr	; Directory address                ;
+    nam$l_name_ptr			,d_addr	; Filename address                 ;
+    nam$l_type_ptr			,d_addr	; Filetype address                 ;
+    nam$l_ver_ptr			,d_addr	; Version number address           ;
+    namdef$$_fill_7			,[2]i4	; Currently unused                 ;
+
+
+
+; These are traditional macros that should be hand-maintained for compatibility ;
+.define NAM$S_DIR_LVLS	3
+.define NAM namdef
+record
+	cc$rms_nam	,d_addr, ^xtrnl(decc$ga_rms_nam)
+
+.endc ; NAMDEF_LOADED ;

@@ -1,0 +1,197 @@
+<!DOCTYPE Project SYSTEM "http://www.slickedit.com/dtd/vse/10.0/vpj.dtd">
+<Project
+	Version="10.0"
+	VendorName="SlickEdit"
+	WorkingDir=".">
+	<Config
+		Name="Release"
+		OutputFile=""
+		CompilerConfigName="Latest Version">
+		<Menu>
+			<Target
+				Name="Compile"
+				MenuCaption="&amp;Compile"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveCurrent"
+				RunFromDir="%rw">
+				<Exec CmdLine='"%(DBLDIR)\bin\dbl" %(SYN_DBG) -XT "%p%n%e"'/>
+			</Target>
+			<Target
+				Name="Build"
+				MenuCaption="&amp;Build"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveWorkspaceFiles"
+				RunFromDir="%rw">
+				<Exec CmdLine='"%(DBLDIR)\bin\dblink" %(SYN_DBG) "%n" WND:tklib.elb DBLDIR:axlib.elb'/>
+			</Target>
+			<Target
+				Name="Rebuild"
+				MenuCaption="&amp;Rebuild"
+				RunFromDir="%rw"
+				ShowOnMenu="HideIfNoCmdLine">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Debug"
+				MenuCaption="&amp;Debug"
+				SaveOption="SaveCurrent"
+				RunFromDir="%rw">
+				<Exec CmdLine='"%(DBLDIR)\bin\dbr" -d "%n"'/>
+			</Target>
+			<Target
+				Name="Execute"
+				MenuCaption="E&amp;xecute"
+				SaveOption="SaveCurrent"
+				RunFromDir="%rw">
+				<Exec CmdLine='"%(DBLDIR)\bin\dbr" "%n"'/>
+			</Target>
+			<Target
+				Name="Compile Scripts"
+				MenuCaption="Co&amp;mpile Scripts"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll"
+				RunFromDir="%rw">
+				<Exec
+					CmdLine="SynCompileScripts"
+					Type="Slick-C"/>
+			</Target>
+			<Target
+				Name="Compile Scripts Setup"
+				MenuCaption="Compile Scripts Set&amp;up..."
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll"
+				RunFromDir="%rw">
+				<Exec
+					CmdLine="SynSetupCompileScripts"
+					Type="Slick-C"/>
+			</Target>
+			<Target
+				Name="Generate Synergy Test Skeletons"
+				MenuCaption="Generate Synergy Test S&amp;keletons..."
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveCurrent"
+				RunFromDir="%rw">
+				<Exec
+					CmdLine="SynStartSkeletonGen"
+					Type="Slick-C"/>
+			</Target>
+			<Target
+				Name="Generate Synergy Prototypes"
+				MenuCaption="Generate Synergy Pro&amp;totypes..."
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll"
+				RunFromDir="%rw">
+				<Exec
+					CmdLine="SynGeneratePrototypes"
+					Type="Slick-C"/>
+			</Target>
+			<Target
+				Name="buildAllSubs"
+				MenuCaption="&amp;buildAllSubs"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="@ctrl:buildall subs: SUB %rn" /server=localhost /port=30001'/>
+			</Target>
+			<Target
+				Name="buildAllClasses"
+				MenuCaption="&amp;buildAllClasses"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="@ctrl:buildall classes: CLASS %rn" /server=localhost /port=30001'/>
+			</Target>
+			<Target
+				Name="buildAllMains"
+				MenuCaption="&amp;buildAllMains"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="@ctrl:buildall source: MAIN %rn" /server=localhost /port=30001'/>
+			</Target>
+			<Target
+				Name="buildProject"
+				MenuCaption="&amp;buildProject"
+				SaveOption="SaveAll"
+				CaptureOutputWith="ProcessBuffer"
+				ClearProcessBuffer="1"
+				Beep="1">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="@ctrl:buildall BUILD$ROOT: ALL %rn" /server=localhost /port=30001'/>
+			</Target>
+			<Target
+				Name="start buildService"
+				MenuCaption="&amp;start buildService">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remoteBuildService.exe"'/>
+			</Target>
+			<Target
+				Name="Build Main"
+				MenuCaption="&amp;Build Main"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="@ctrl:buildmain source:%n " /server=localhost /port=30001'/>
+			</Target>
+			<Target
+				Name="Build Class"
+				MenuCaption="&amp;Build Class"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="@ctrl:buildClass classes:%n" /server=localhost /port=30001'/>
+			</Target>
+			<Target
+				Name="Build Sub"
+				MenuCaption="&amp;Build Sub"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveAll">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="@ctrl:buildsub subs:%n obj:%rn.olb" /server=localhost /port=30001'/>
+			</Target>
+			<Target
+				Name="Prototype Class"
+				MenuCaption="&amp;Prototype Class"
+				CaptureOutputWith="ProcessBuffer"
+				ClearProcessBuffer="1"
+				SaveOption="SaveAll">
+				<Exec CmdLine='"D:\Program Files\ChrisBWare\winServer\remotebuild"/command="dblproto classes:%n" /server=localhost /port=30001'/>
+			</Target>
+		</Menu>
+	</Config>
+	<CustomFolders>
+		<Folder
+			Name="Source Files"
+			Filters="*.dbl;*.tpl"/>
+		<Folder
+			Name="Header Files"
+			Filters="*.def;*.dbh"/>
+		<Folder
+			Name="Toolkit Script Files"
+			Filters="*.wsc"/>
+		<Folder
+			Name="Other Files"
+			Filters="">
+		</Folder>
+	</CustomFolders>
+	<Macro>
+		<ExecMacro CmdLine="syn_set SYNIMPDIR=y:\remoteBuild\proto\"/>
+		<ExecMacro CmdLine="syn_set SYNEXPDIR=y:\remoteBuild\proto\"/>
+		<ExecMacro CmdLine="syn_set SYNDEFNS=ChrisBWare.net"/>
+		<ExecMacro CmdLine="syn_set build$root=y:\%rn"/>
+		<ExecMacro CmdLine="syn_set WBRemoteInit=@DKA0:[USER.CBLUNDELL.%rn]%rn.com"/>
+		<ExecMacro CmdLine="syn_set SYN_DBG=-d"/>
+	</Macro>
+	<Files AutoFolders="DirectoryView">
+		<Folder Name="build">
+			<F N="build/buildall.com"/>
+			<F N="build/buildclass.com"/>
+			<F N="build/buildmain.com"/>
+			<F N="build/buildshare.com"/>
+			<F N="build/buildsub.com"/>
+			<F N="build/fabdef.dbl"/>
+			<F N="build/logicals.com"/>
+			<F N="build/namdef.dbl"/>
+			<F N="build/tools.opt"/>
+		</Folder>
+		<Folder Name="source">
+			<F N="source/testlocking.dbl"/>
+		</Folder>
+		<Folder Name="subs">
+			<F N="subs/locking.dbl"/>
+		</Folder>
+		<F N="testlocking.com"/>
+	</Files>
+</Project>
